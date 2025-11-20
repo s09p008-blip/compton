@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>コンプトン散乱シミュレーション</title>
+  <style>
+    :root {
+      --bg: #f5f5f5;
+      --panel: #ffffff;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --text: #1f2937;
+      --text-light: #6b7280;
+      --border: #e5e7eb;
+      --photon-in: #ef4444;
+      --photon-out: #3b82f6;
+      --electron: #10b981;
+      --target: #64748b;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      touch-action: pan-y;
+    }
+    
+    #app {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+    
+    .panel {
+      background: var(--panel);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 16px;
+    }
+    
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-light);
+    }
+    
+    canvas {
+      display: block;
+      border-radius: 8px;
+      background: #fafafa;
+      width: 100%;
+      height: auto;
+      touch-action: none;
+    }
+    
+    .graphs {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    
+    .graph-container {
+      background: var(--panel);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 16px;
+    }
+    
+    .graph-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    
+    .control-inline {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+    }
+    
+    .control-inline label {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      min-width: 100px;
+    }
+    
+    .control-inline input[type="range"] {
+      flex: 1;
+      margin: 0;
+    }
+    
+    .control-inline .control-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+      background: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      min-width: 70px;
+      text-align: center;
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .control-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .control-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 2px 10px;
+      border-radius: 12px;
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      outline: none;
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      transition: transform 0.1s ease;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.15);
+    }
+    
+    input[type="range"]::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    
+    button {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 44px;
+      touch-action: manipulation;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+    }
+    
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+    
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    
+    .info-item {
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-left: 3px solid var(--primary);
+    }
+    
+    .info-label {
+      font-size: 10px;
+      color: var(--text-light);
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+    
+    .info-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .info-panel {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    
+    .note {
+      font-size: 11px;
+      color: var(--text-light);
+      margin-top: 12px;
+      padding: 8px;
+      background: #fef3c7;
+      border-radius: 6px;
+      border-left: 3px solid #f59e0b;
+    }
+    
+    @media (min-width: 640px) {
+      .graphs {
+        grid-template-columns: 1fr 1fr;
+      }
+      
+      .panel-title {
+        font-size: 14px;
+      }
+      
+      .graph-title {
+        font-size: 13px;
+      }
+      
+      .info-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      
+      .control-inline {
+        padding: 14px 16px;
+      }
+    }
+    
+    @media (min-width: 768px) {
+      #app {
+        padding: 16px;
+        gap: 16px;
+      }
+      
+      .panel {
+        padding: 20px;
+      }
+      
+      .info-label {
+        font-size: 11px;
+      }
+      
+      .info-value {
+        font-size: 14px;
+      }
+      
+      .info-item {
+        padding: 12px;
+      }
+      
+      .control-inline label {
+        font-size: 14px;
+      }
+      
+      .control-inline .control-value {
+        font-size: 15px;
+      }
+    }
+    
+    @media (min-width: 1024px) {
+      button {
+        min-height: auto;
+        padding: 10px 16px;
+      }
+    }
+    
+    @media (max-width: 639px) {
+      .legend {
+        flex-wrap: wrap;
+        font-size: 11px;
+      }
+      
+      .note {
+        font-size: 10px;
+      }
+      
+      .control-inline {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .control-inline label {
+        min-width: auto;
+      }
+      
+      .info-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 実験装置 -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">実験装置</div>
+        <div class="button-group" style="max-width: 200px; margin: 0;">
+          <button class="btn-primary" id="playBtn">一時停止</button>
+          <button class="btn-secondary" id="resetBtn">リセット</button>
+        </div>
+      </div>
+      <canvas id="experimentCanvas"></canvas>
+      <div class="control-inline">
+        <label>入射X線の波長</label>
+        <input type="range" id="wavelengthSlider" min="50" max="100" value="71" step="1">
+        <span class="control-value" id="wavelengthValue">71 pm</span>
+      </div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--photon-in)"></div>
+          <span>入射X線</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--photon-out)"></div>
+          <span>散乱X線</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--target)"></div>
+          <span>黒鉛標的</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 衝突モデル -->
+    <div class="panel">
+      <div class="panel-title">光子と電子の衝突</div>
+      <canvas id="collisionCanvas"></canvas>
+      <div class="control-inline">
+        <label>散乱角度 θ</label>
+        <input type="range" id="angleSlider" min="0" max="180" value="90" step="5">
+        <span class="control-value" id="angleValue">90°</span>
+      </div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--photon-in)"></div>
+          <span>入射光子</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--photon-out)"></div>
+          <span>散乱光子</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--electron)"></div>
+          <span>反跳電子</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- グラフ -->
+    <div class="graphs">
+      <div class="graph-container">
+        <div class="graph-title">散乱X線のスペクトル</div>
+        <canvas id="spectrumCanvas"></canvas>
+      </div>
+      <div class="graph-container">
+        <div class="graph-title">散乱角度と波長変化</div>
+        <canvas id="wavelengthCanvas"></canvas>
+      </div>
+    </div>
+    
+    <!-- 測定結果 -->
+    <div class="panel">
+      <div class="panel-title">測定結果</div>
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">散乱X線の波長</div>
+          <div class="info-value" id="scatteredWavelength">73.4 pm</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">波長変化 Δλ</div>
+          <div class="info-value" id="wavelengthChange">2.4 pm</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">光子エネルギー</div>
+          <div class="info-value" id="photonEnergy">17.5 keV</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">電子の運動エネルギー</div>
+          <div class="info-value" id="electronEnergy">0.8 keV</div>
+        </div>
+      </div>
+      <div class="note" style="margin-top: 12px;">
+        💡 散乱角度を変えて、X線の波長とエネルギーがどう変化するか観察してみよう
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 物理定数
+    const h = 6.626e-34;      // プランク定数 [J·s]
+    const c = 3.0e8;          // 光速 [m/s]
+    const m_e = 9.109e-31;    // 電子の質量 [kg]
+    const lambda_c = h / (m_e * c) * 1e12; // コンプトン波長 [pm]
+    
+    // DOM要素
+    const experimentCanvas = document.getElementById('experimentCanvas');
+    const collisionCanvas = document.getElementById('collisionCanvas');
+    const spectrumCanvas = document.getElementById('spectrumCanvas');
+    const wavelengthCanvas = document.getElementById('wavelengthCanvas');
+    
+    const wavelengthSlider = document.getElementById('wavelengthSlider');
+    const angleSlider = document.getElementById('angleSlider');
+    const playBtn = document.getElementById('playBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    
+    const wavelengthValue = document.getElementById('wavelengthValue');
+    const angleValue = document.getElementById('angleValue');
+    const scatteredWavelength = document.getElementById('scatteredWavelength');
+    const wavelengthChange = document.getElementById('wavelengthChange');
+    const photonEnergy = document.getElementById('photonEnergy');
+    const electronEnergy = document.getElementById('electronEnergy');
+    
+    // キャンバスのリサイズ処理
+    function setupCanvas(canvas, aspectRatio = 8/3) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = width / aspectRatio;
+      
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      
+      return { width, height, dpr };
+    }
+    
+    let canvasSizes = {
+      experiment: {},
+      collision: {},
+      spectrum: {},
+      wavelength: {}
+    };
+    
+    function resizeCanvases() {
+      canvasSizes.experiment = setupCanvas(experimentCanvas, 8/3);
+      canvasSizes.collision = setupCanvas(collisionCanvas, 8/2.8);
+      canvasSizes.spectrum = setupCanvas(spectrumCanvas, 380/220);
+      canvasSizes.wavelength = setupCanvas(wavelengthCanvas, 380/220);
+    }
+    
+    // 初期リサイズ
+    resizeCanvases();
+    
+    // ウィンドウリサイズ時の処理（デバウンス付き）
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(resizeCanvases, 200);
+    });
+    
+    // 状態管理
+    let state = {
+      lambda0: 71,      // 入射波長 [pm]
+      theta: 90,        // 散乱角度 [度]
+      time: 0,
+      running: true,
+      lambdaPrime: 0,   // 散乱波長 [pm]
+      deltaLambda: 0,   // 波長変化 [pm]
+      E0: 0,            // 入射光子エネルギー [keV]
+      E1: 0,            // 散乱光子エネルギー [keV]
+      Ee: 0             // 電子エネルギー [keV]
+    };
+    
+    // 物理計算
+    function calculatePhysics() {
+      const thetaRad = state.theta * Math.PI / 180;
+      
+      // コンプトン散乱の式: Δλ = λ_c * (1 - cos θ)
+      state.deltaLambda = lambda_c * (1 - Math.cos(thetaRad));
+      state.lambdaPrime = state.lambda0 + state.deltaLambda;
+      
+      // エネルギー計算 E = hc/λ
+      state.E0 = (h * c) / (state.lambda0 * 1e-12) / 1.602e-16; // keV
+      state.E1 = (h * c) / (state.lambdaPrime * 1e-12) / 1.602e-16; // keV
+      state.Ee = state.E0 - state.E1;
+      
+      // UI更新
+      scatteredWavelength.textContent = state.lambdaPrime.toFixed(2) + ' pm';
+      wavelengthChange.textContent = state.deltaLambda.toFixed(2) + ' pm';
+      photonEnergy.textContent = state.E0.toFixed(1) + ' keV';
+      electronEnergy.textContent = state.Ee.toFixed(2) + ' keV';
+    }
+    
+    // 実験装置の描画
+    function drawExperiment() {
+      const ctx = experimentCanvas.getContext('2d');
+      const w = canvasSizes.experiment.width;
+      const h = canvasSizes.experiment.height;
+      
+      ctx.clearRect(0, 0, w, h);
+      
+      const centerY = h / 2;
+      const sourceX = 80;
+      const targetX = w / 2;
+      const detectorDistance = 180;
+      
+      // X線源
+      ctx.fillStyle = '#1f2937';
+      ctx.fillRect(sourceX - 30, centerY - 25, 60, 50);
+      ctx.fillStyle = '#fff';
+      ctx.font = '12px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('X線源', sourceX, centerY + 5);
+      
+      // 入射X線ビーム
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(sourceX + 30, centerY);
+      ctx.lineTo(targetX - 30, centerY);
+      ctx.stroke();
+      
+      // 入射X線の波を描画
+      const waveStart = sourceX + 30;
+      const waveEnd = targetX - 30;
+      const wavelength = 15;
+      const amplitude = 6;
+      
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = waveStart; x <= waveEnd; x++) {
+        const phase = ((x - waveStart) / wavelength) * Math.PI * 2 - state.time * 5;
+        const y = centerY + Math.sin(phase) * amplitude;
+        if (x === waveStart) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      
+      // 黒鉛標的
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(targetX, centerY, 25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // 標的の格子模様
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1;
+      for (let i = -15; i <= 15; i += 5) {
+        ctx.beginPath();
+        ctx.moveTo(targetX + i, centerY - 20);
+        ctx.lineTo(targetX + i, centerY + 20);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(targetX - 20, centerY + i);
+        ctx.lineTo(targetX + 20, centerY + i);
+        ctx.stroke();
+      }
+      
+      ctx.fillStyle = '#1f2937';
+      ctx.font = '11px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('黒鉛', targetX, centerY + 45);
+      
+      // 散乱角度の円弧
+      const angleRad = state.theta * Math.PI / 180;
+      const arcRadius = 60;
+      
+      ctx.strokeStyle = '#9ca3af';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(targetX, centerY, arcRadius, 0, -angleRad, true);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // 角度ラベル
+      const labelAngle = -angleRad / 2;
+      const labelX = targetX + Math.cos(labelAngle) * (arcRadius + 15);
+      const labelY = centerY + Math.sin(labelAngle) * (arcRadius + 15);
+      ctx.fillStyle = '#2563eb';
+      ctx.font = 'bold 13px system-ui';
+      ctx.fillText(`θ=${state.theta}°`, labelX, labelY);
+      
+      // 検出器
+      const detectorAngle = -angleRad;
+      const detectorX = targetX + Math.cos(detectorAngle) * detectorDistance;
+      const detectorY = centerY + Math.sin(detectorAngle) * detectorDistance;
+      
+      // 散乱X線ビーム
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(targetX + Math.cos(detectorAngle) * 30, centerY + Math.sin(detectorAngle) * 30);
+      ctx.lineTo(detectorX - Math.cos(detectorAngle) * 35, detectorY - Math.sin(detectorAngle) * 35);
+      ctx.stroke();
+      
+      // 散乱X線の波
+      const scatterWaveStart = targetX + Math.cos(detectorAngle) * 30;
+      const scatterWaveStartY = centerY + Math.sin(detectorAngle) * 30;
+      const scatterWaveEnd = detectorX - Math.cos(detectorAngle) * 35;
+      const scatterWaveEndY = detectorY - Math.sin(detectorAngle) * 35;
+      const scatterWaveLength = Math.sqrt(
+        Math.pow(scatterWaveEnd - scatterWaveStart, 2) + 
+        Math.pow(scatterWaveEndY - scatterWaveStartY, 2)
+      );
+      
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let s = 0; s <= 1; s += 0.01) {
+        const x = scatterWaveStart + (scatterWaveEnd - scatterWaveStart) * s;
+        const y = scatterWaveStartY + (scatterWaveEndY - scatterWaveStartY) * s;
+        const phase = (s * scatterWaveLength / wavelength) * Math.PI * 2 - state.time * 5;
+        const offset = Math.sin(phase) * amplitude;
+        const offsetX = x + Math.sin(detectorAngle) * offset;
+        const offsetY = y - Math.cos(detectorAngle) * offset;
+        if (s === 0) ctx.moveTo(offsetX, offsetY);
+        else ctx.lineTo(offsetX, offsetY);
+      }
+      ctx.stroke();
+      
+      // 検出器
+      const detectorWidth = 70;
+      const detectorHeight = 50;
+      ctx.save();
+      ctx.translate(detectorX, detectorY);
+      ctx.rotate(detectorAngle);
+      
+      ctx.fillStyle = '#1f2937';
+      ctx.fillRect(-detectorWidth/2, -detectorHeight/2, detectorWidth, detectorHeight);
+      ctx.strokeStyle = '#4b5563';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-detectorWidth/2, -detectorHeight/2, detectorWidth, detectorHeight);
+      
+      // 検出器の窓
+      ctx.fillStyle = '#60a5fa';
+      ctx.fillRect(-detectorWidth/2 + 10, -detectorHeight/2 + 10, 15, detectorHeight - 20);
+      
+      ctx.fillStyle = '#fff';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('検出器', 0, 5);
+      
+      ctx.restore();
+    }
+    
+    // 衝突モデルの描画
+    function drawCollision() {
+      const ctx = collisionCanvas.getContext('2d');
+      const w = canvasSizes.collision.width;
+      const h = canvasSizes.collision.height;
+      
+      ctx.clearRect(0, 0, w, h);
+      
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const collisionTime = 2.0;
+      const cycleTime = 4.0;
+      const t = state.time % cycleTime;
+      
+      // 衝突前後の判定
+      const isBeforeCollision = t < collisionTime;
+      
+      if (isBeforeCollision) {
+        // 衝突前：入射光子が電子に近づく
+        const progress = t / collisionTime;
+        const photonX = centerX - 200 + 200 * progress;
+        const photonY = centerY;
+        
+        // 入射光子の軌跡
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(centerX - 200, centerY);
+        ctx.lineTo(centerX, centerY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // 入射光子
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(photonX, photonY, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // 光子の波動性を示す
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {
+          const waveX = photonX - 20 - i * 15;
+          if (waveX > centerX - 200) {
+            ctx.beginPath();
+            ctx.arc(waveX, photonY, 3 + i, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        
+        // 静止電子
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#059669';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // ラベル
+        ctx.font = '12px system-ui';
+        ctx.fillStyle = '#1f2937';
+        ctx.textAlign = 'left';
+        ctx.fillText('入射光子', photonX + 15, photonY - 15);
+        ctx.fillText('静止電子', centerX + 20, centerY - 20);
+        
+        // 運動量矢印
+        drawArrow(ctx, centerX - 120, centerY - 80, centerX - 50, centerY - 80, '#ef4444', 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'italic 14px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('p₀', centerX - 35, centerY - 85);
+        
+      } else {
+        // 衝突後：散乱光子と反跳電子
+        const progress = (t - collisionTime) / (cycleTime - collisionTime);
+        const distance = 150 * progress;
+        
+        const angleRad = -state.theta * Math.PI / 180;
+        const photonX = centerX + Math.cos(angleRad) * distance;
+        const photonY = centerY + Math.sin(angleRad) * distance;
+        
+        // 電子の散乱角度（運動量保存から計算）
+        const phi = Math.atan2(
+          Math.sin(state.theta * Math.PI / 180),
+          state.lambda0 / state.lambdaPrime - Math.cos(state.theta * Math.PI / 180)
+        );
+        const electronX = centerX + Math.cos(phi) * distance * 0.8;
+        const electronY = centerY - Math.sin(phi) * distance * 0.8;
+        
+        // 軌跡
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX + Math.cos(angleRad) * 200, centerY + Math.sin(angleRad) * 200);
+        ctx.stroke();
+        
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX + Math.cos(phi) * 200, centerY - Math.sin(phi) * 200);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // 散乱光子
+        ctx.fillStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.arc(photonX, photonY, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // 反跳電子
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.arc(electronX, electronY, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#059669';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // 運動の軌跡
+        if (progress > 0.3) {
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.lineTo(electronX, electronY);
+          ctx.stroke();
+        }
+        
+        // ラベル
+        ctx.font = '12px system-ui';
+        ctx.fillStyle = '#1f2937';
+        ctx.textAlign = 'left';
+        ctx.fillText('散乱光子', photonX + 15, photonY);
+        ctx.fillText('反跳電子', electronX + 18, electronY);
+        
+        // 運動量矢印
+        const arrowScale = 70;
+        const photonArrowX = centerX + Math.cos(angleRad) * arrowScale;
+        const photonArrowY = centerY + Math.sin(angleRad) * arrowScale;
+        const electronArrowX = centerX + Math.cos(phi) * arrowScale * 0.6;
+        const electronArrowY = centerY - Math.sin(phi) * arrowScale * 0.6;
+        
+        drawArrow(ctx, centerX, centerY - 80, photonArrowX, photonArrowY - 80, '#3b82f6', 2);
+        ctx.fillStyle = '#3b82f6';
+        ctx.font = 'italic 14px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText("p'", photonArrowX + 15, photonArrowY - 85);
+        
+        drawArrow(ctx, centerX, centerY - 80, electronArrowX, electronArrowY - 80, '#10b981', 2);
+        ctx.fillStyle = '#10b981';
+        ctx.fillText('pₑ', electronArrowX + 15, electronArrowY - 85);
+      }
+      
+      // エネルギー・運動量保存の式
+      ctx.font = '13px system-ui';
+      ctx.fillStyle = '#4b5563';
+      ctx.textAlign = 'left';
+      ctx.fillText('運動量保存: p₀ = p\' + pₑ', 20, 30);
+      ctx.fillText('エネルギー保存: E₀ = E\' + Eₑ', 20, 50);
+    }
+    
+    // 矢印を描く補助関数
+    function drawArrow(ctx, x1, y1, x2, y2, color, width) {
+      const headLen = 10;
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6),
+                 y2 - headLen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6),
+                 y2 - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // スペクトルグラフの描画
+    function drawSpectrum() {
+      const ctx = spectrumCanvas.getContext('2d');
+      const w = canvasSizes.spectrum.width;
+      const h = canvasSizes.spectrum.height;
+      
+      ctx.clearRect(0, 0, w, h);
+      
+      const padding = 40;
+      const graphW = w - padding * 2;
+      const graphH = h - padding * 2;
+      
+      // 軸
+      ctx.strokeStyle = '#9ca3af';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, h - padding);
+      ctx.lineTo(w - padding, h - padding);
+      ctx.stroke();
+      
+      // ラベル
+      ctx.font = '11px system-ui';
+      ctx.fillStyle = '#4b5563';
+      ctx.textAlign = 'center';
+      ctx.fillText('波長 [pm]', w / 2, h - 5);
+      ctx.save();
+      ctx.translate(10, h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('強度', 0, 0);
+      ctx.restore();
+      
+      // スペクトルのピーク描画
+      const lambda0Pos = padding + (state.lambda0 - 50) / 50 * graphW;
+      const lambda1Pos = padding + (state.lambdaPrime - 50) / 50 * graphW;
+      
+      // 入射X線のピーク（無い - 散乱のみ）
+      // 散乱X線のピーク
+      const intensity = Math.abs(Math.cos(state.theta * Math.PI / 180)) * 0.5 + 0.5;
+      const peakHeight = graphH * intensity;
+      
+      // グラデーション
+      const gradient = ctx.createLinearGradient(lambda1Pos, h - padding, lambda1Pos, h - padding - peakHeight);
+      gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+      gradient.addColorStop(1, 'rgba(59, 130, 246, 0.8)');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(lambda1Pos - 20, h - padding);
+      
+      // ガウス分布的なピーク
+      for (let x = -20; x <= 20; x += 1) {
+        const y = peakHeight * Math.exp(-(x * x) / 100);
+        ctx.lineTo(lambda1Pos + x, h - padding - y);
+      }
+      ctx.lineTo(lambda1Pos + 20, h - padding);
+      ctx.closePath();
+      ctx.fill();
+      
+      // ピークの線
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(lambda1Pos, h - padding);
+      ctx.lineTo(lambda1Pos, h - padding - peakHeight);
+      ctx.stroke();
+      
+      // 波長マーカー
+      ctx.fillStyle = '#2563eb';
+      ctx.font = 'bold 11px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${state.lambdaPrime.toFixed(1)}pm`, lambda1Pos, h - padding + 20);
+      
+      // 入射波長の参照線
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(lambda0Pos, h - padding);
+      ctx.lineTo(lambda0Pos, padding);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = '#ef4444';
+      ctx.font = '10px system-ui';
+      ctx.fillText(`${state.lambda0}pm`, lambda0Pos, padding - 5);
+      ctx.fillText('(入射)', lambda0Pos, padding + 8);
+    }
+    
+    // 波長変化グラフの描画
+    function drawWavelengthGraph() {
+      const ctx = wavelengthCanvas.getContext('2d');
+      const w = canvasSizes.wavelength.width;
+      const h = canvasSizes.wavelength.height;
+      
+      ctx.clearRect(0, 0, w, h);
+      
+      const padding = 40;
+      const graphW = w - padding * 2;
+      const graphH = h - padding * 2;
+      
+      // 軸
+      ctx.strokeStyle = '#9ca3af';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, h - padding);
+      ctx.lineTo(w - padding, h - padding);
+      ctx.stroke();
+      
+      // ラベル
+      ctx.font = '11px system-ui';
+      ctx.fillStyle = '#4b5563';
+      ctx.textAlign = 'center';
+      ctx.fillText('散乱角度 θ [度]', w / 2, h - 5);
+      ctx.save();
+      ctx.translate(10, h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Δλ [pm]', 0, 0);
+      ctx.restore();
+      
+      // コンプトン散乱の曲線: Δλ = λ_c(1 - cos θ)
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      
+      for (let angle = 0; angle <= 180; angle += 1) {
+        const angleRad = angle * Math.PI / 180;
+        const deltaLambda = lambda_c * (1 - Math.cos(angleRad));
+        const x = padding + (angle / 180) * graphW;
+        const y = h - padding - (deltaLambda / 5) * graphH;
+        
+        if (angle === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      
+      // 現在の点
+      const currentX = padding + (state.theta / 180) * graphW;
+      const currentY = h - padding - (state.deltaLambda / 5) * graphH;
+      
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(currentX, currentY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // 目盛り
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'center';
+      
+      for (let angle = 0; angle <= 180; angle += 45) {
+        const x = padding + (angle / 180) * graphW;
+        ctx.fillText(angle, x, h - padding + 15);
+        
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, h - padding);
+        ctx.lineTo(x, h - padding + 3);
+        ctx.stroke();
+      }
+      
+      ctx.textAlign = 'right';
+      for (let dl = 0; dl <= 5; dl += 1) {
+        const y = h - padding - (dl / 5) * graphH;
+        ctx.fillText(dl, padding - 5, y + 4);
+        
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding - 3, y);
+        ctx.lineTo(padding, y);
+        ctx.stroke();
+      }
+      
+      // 理論式の表示
+      ctx.font = '12px system-ui';
+      ctx.fillStyle = '#4b5563';
+      ctx.textAlign = 'left';
+      ctx.fillText('Δλ = λc(1 - cos θ)', padding + 10, padding + 20);
+      ctx.font = '10px system-ui';
+      ctx.fillText(`λc = ${lambda_c.toFixed(2)} pm`, padding + 10, padding + 35);
+    }
+    
+    // アニメーションループ
+    let lastTime = 0;
+    function animate(timestamp) {
+      const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+      lastTime = timestamp;
+      
+      if (state.running) {
+        state.time += dt;
+      }
+      
+      drawExperiment();
+      drawCollision();
+      drawSpectrum();
+      drawWavelengthGraph();
+      
+      requestAnimationFrame(animate);
+    }
+    
+    // イベントリスナー
+    wavelengthSlider.addEventListener('input', (e) => {
+      state.lambda0 = parseFloat(e.target.value);
+      wavelengthValue.textContent = state.lambda0 + ' pm';
+      calculatePhysics();
+    });
+    
+    angleSlider.addEventListener('input', (e) => {
+      state.theta = parseFloat(e.target.value);
+      angleValue.textContent = state.theta + '°';
+      calculatePhysics();
+    });
+    
+    playBtn.addEventListener('click', () => {
+      state.running = !state.running;
+      playBtn.textContent = state.running ? '一時停止' : '再生';
+    });
+    
+    resetBtn.addEventListener('click', () => {
+      state.lambda0 = 71;
+      state.theta = 90;
+      state.time = 0;
+      state.running = true;
+      
+      wavelengthSlider.value = 71;
+      angleSlider.value = 90;
+      wavelengthValue.textContent = '71 pm';
+      angleValue.textContent = '90°';
+      playBtn.textContent = '一時停止';
+      
+      calculatePhysics();
+    });
+    
+    // 初期化
+    calculatePhysics();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
